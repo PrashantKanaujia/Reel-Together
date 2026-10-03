@@ -11,13 +11,12 @@ npm install
 npm run dev
 ```
 
-Open the Vite URL printed by the client process (usually `http://localhost:5173`). The Vite development server proxies API and Socket.IO traffic to Express on port 3001. For a production build, run `npm run build` followed by `npm start`; the Express server serves the built frontend and listens on `PORT` (3001 locally).
 
 ## Deploy on Render
 
 `render.yaml` defines a single Node web service. Push this repository to a Git provider, then in Render choose **New → Blueprint** and connect that repository. Render reads the Blueprint, installs dependencies (including TypeScript and React type declarations) with `npm ci --include=dev`, builds with `npm run build`, starts with `npm start`, and checks `/api/health`. WebSockets use the same public service and origin as the frontend. No secret environment variables are required.
 
-**Live URL:** Add the `https://<service-name>.onrender.com` URL shown by Render after the first successful deploy.
+Live URL:`https://reeltogether.onrender.com` URL shown by Render after the first successful deploy.
 
 Render deployment still needs a connected Git repository and a Render account. This workspace has no configured Git remote or Render credentials, so a public service URL cannot be created from this checkout alone.
 
