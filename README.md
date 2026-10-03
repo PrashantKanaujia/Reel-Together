@@ -15,7 +15,7 @@ Open the Vite URL printed by the client process (usually `http://localhost:5173`
 
 ## Deploy on Render
 
-`render.yaml` defines a single Node web service. Push this repository to a Git provider, then in Render choose **New → Blueprint** and connect that repository. Render reads the Blueprint, builds with `npm install && npm run build`, starts with `npm start`, and checks `/api/health`. WebSockets use the same public service and origin as the frontend. No secret environment variables are required.
+`render.yaml` defines a single Node web service. Push this repository to a Git provider, then in Render choose **New → Blueprint** and connect that repository. Render reads the Blueprint, installs dependencies (including TypeScript and React type declarations) with `npm ci --include=dev`, builds with `npm run build`, starts with `npm start`, and checks `/api/health`. WebSockets use the same public service and origin as the frontend. No secret environment variables are required.
 
 **Live URL:** Add the `https://<service-name>.onrender.com` URL shown by Render after the first successful deploy.
 
