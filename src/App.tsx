@@ -22,6 +22,7 @@ const initials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map((par
 function YouTubePlayer({ playback, canControl, isHost, onAction }: { playback: Playback; canControl: boolean; isHost: boolean; onAction: (action: string, data?: Record<string, number | string>) => void }) {
   const frame = useRef<HTMLDivElement>(null); const player = useRef<any>(null);
   const latestPlayback = useRef(playback); latestPlayback.current = playback;
+  const latestCanControl = useRef(canControl); latestCanControl.current = canControl;
   const [muted, setMuted] = useState(false); const [duration, setDuration] = useState(0); const [progress, setProgress] = useState(0);
   useEffect(() => {
     let alive = true;
@@ -29,7 +30,10 @@ function YouTubePlayer({ playback, canControl, isHost, onAction }: { playback: P
       if (!alive || !frame.current || !window.YT?.Player) return;
       player.current = new window.YT.Player(frame.current, { width: '100%', height: '100%', videoId: latestPlayback.current.videoId, playerVars: { autoplay: 0, controls: 0, disablekb: 1, modestbranding: 1, rel: 0, playsinline: 1 }, events: {
         onReady: (event: any) => { const current = latestPlayback.current; const loadedId = event.target.getVideoData?.().video_id; if (loadedId !== current.videoId) event.target.cueVideoById(current.videoId); setDuration(event.target.getDuration() || 0); if (current.currentTime > 0) event.target.seekTo(current.currentTime, true); if (current.playing) event.target.playVideo(); },
-        onStateChange: (event: any) => { if (event.data === 1) setDuration(event.target.getDuration() || 0); }
+        onStateChange: (event: any) => {
+          if (event.data === 1) setDuration(event.target.getDuration() || 0);
+          if ((event.data === 1 || event.data === 3) && !latestCanControl.current && !latestPlayback.current.playing) event.target.pauseVideo();
+        }
       } });
     };
     if (window.YT?.Player) makePlayer();
@@ -46,17 +50,24 @@ function YouTubePlayer({ playback, canControl, isHost, onAction }: { playback: P
   }, [playback.videoId]);
   useEffect(() => {
     const p = player.current; if (!p?.getPlayerState) return;
-    if (playback.playing && p.getPlayerState() !== 1) p.playVideo();
-    if (!playback.playing && p.getPlayerState() === 1) p.pauseVideo();
+    const state = p.getPlayerState();
+    if (playback.playing && state !== 1 && state !== 3) p.playVideo();
+    if (!playback.playing && (state === 1 || state === 3)) p.pauseVideo();
     if (playback.currentTime !== undefined && Math.abs((p.getCurrentTime?.() || 0) - playback.currentTime) > 2.5) p.seekTo(playback.currentTime, true);
   }, [playback.videoId, playback.playing, playback.updatedAt]);
   useEffect(() => { const timer = window.setInterval(() => { const p = player.current; if (p?.getCurrentTime) setProgress(p.getCurrentTime() || 0); }, 500); return () => clearInterval(timer); }, []);
-  useEffect(() => { const timer = window.setInterval(() => { const p = player.current; if (isHost && playback.playing && p?.getCurrentTime) socket.emit('sync_position', { time: p.getCurrentTime() || 0 }); }, 3000); return () => clearInterval(timer); }, [isHost, playback.playing]);
-  const toggle = () => { if (!canControl) return; const p = player.current; onAction(playback.playing ? 'pause' : 'play', playback.playing && p?.getCurrentTime ? { time: p.getCurrentTime() || 0 } : {}); };
+  useEffect(() => { const timer = window.setInterval(() => { const p = player.current; if (isHost && playback.playing && p?.getCurrentTime) socket.emit('sync_position', { time: p.getCurrentTime() || 0 }); }, 1000); return () => clearInterval(timer); }, [isHost, playback.playing]);
+  const toggle = () => {
+    if (!canControl) return;
+    const p = player.current;
+    if (playback.playing) { const time = p?.getCurrentTime ? p.getCurrentTime() || 0 : playback.currentTime; p?.pauseVideo?.(); onAction('pause', { time }); }
+    else { p?.playVideo?.(); onAction('play'); }
+  };
   const seek = (e: React.ChangeEvent<HTMLInputElement>) => { if (canControl) onAction('seek', { time: Number(e.target.value) }); };
   return <div className="player-shell">
     <div className="player-screen"><div ref={frame} className="youtube-frame" />
-      {!playback.playing && <button aria-label="Play video" className="big-play" onClick={toggle} disabled={!canControl}><Play size={26} fill="currentColor" /></button>}
+      {canControl && <button aria-label={playback.playing ? 'Pause video' : 'Play video'} className={`player-overlay ${playback.playing ? 'playing' : 'paused'}`} onClick={toggle}><span className="big-play">{playback.playing ? <Pause size={24} fill="currentColor"/> : <Play size={26} fill="currentColor"/>}</span></button>}
+      {!canControl && <div className="player-overlay spectator-overlay" aria-hidden="true"/>}
       {!canControl && <div className="watch-only"><ShieldCheck size={15} /> You’re watching together</div>}
       <div className="player-controls"><button aria-label={playback.playing ? 'Pause' : 'Play'} disabled={!canControl} onClick={toggle}>{playback.playing ? <Pause size={18} fill="currentColor"/> : <Play size={18} fill="currentColor"/>}</button>
         <span className="player-time">{formatTime(progress)} <span>/</span> {formatTime(duration)}</span>

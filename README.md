@@ -28,7 +28,7 @@ Render deployment still needs a connected Git repository and a Render account. T
 - The server owns an in-memory `Room` object for every active room. A room stores the participant roles, playback state, pending requests, and the latest 100 chat messages.
 - On create, the server assigns the creator the `host` role. Joiners become `participant`. Only `host` and `moderator` can issue playback actions; only the host can change roles, remove participants, or transfer host. These checks happen on the server before any event is broadcast.
 - Participants can request play, pause, seek, or a video change. The host or a moderator can approve or decline each request. Approval applies the action through the same server-side playback path as direct controls.
-- The host and moderators send the current player position every three seconds during playback. Everyone receives the authoritative room state and corrects drift in the YouTube player.
+- The host sends the current player position every second during playback. Everyone receives the authoritative room state and corrects larger drift in the YouTube player.
 
 ## Events and permissions
 
